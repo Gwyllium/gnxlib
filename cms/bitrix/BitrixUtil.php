@@ -51,4 +51,8 @@ class BitrixUtil {
         }
     }
 
+    public static function test(){
+        die('test ok!');
+    }
+
 } 
