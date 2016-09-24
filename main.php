@@ -8,6 +8,8 @@ spl_autoload_register(function ($class) {
 });
 
 
+
+
 function rsearch($folder, $pattern) {
     $iti = new RecursiveDirectoryIterator($folder);
     foreach(new RecursiveIteratorIterator($iti) as $file){

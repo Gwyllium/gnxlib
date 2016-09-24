@@ -1,5 +1,20 @@
 <?php
 
+/*уровни логирования
+DEBUG - отладочные сообщения наиболее подробные
+INFO - менее подробные отладочные сообщения - например вызов функции
+WARNING - некритичные ошибки, часть из которых можно исправить
+ERROR - ошибка, после которой система может продолжить работу.
+FATAL - значительная ошибка, которая препятствует нормальному выполнению. Например, инициализация важной библиотеки
+*/
+
+define('GLOGER_NONE', 0);
+define('GLOGER_DEBUG', 1);
+define('GLOGER_INFO', 2);
+define('GLOGER_WARNING',3 );
+define('GLOGER_ERROR',4 );
+define('GLOGER_FATAL',5 );
+
 //загнать эту функцию в отдельный класс
 function udate($format = 'u', $utimestamp = null) {
     if (is_null($utimestamp))
@@ -14,21 +29,13 @@ function udate($format = 'u', $utimestamp = null) {
 
 class Loger{
     private static $containers;//список контейнеров для сообщений. это могут быть файлы, массивы и т.п.
-    private static $inputStrategy;
+
     private static $outputStrategy;
+    private static $logLevel;//по этому уровню определяем что логировать
+    private static $currentContainerName;
+    private static $prevContainerName;
 
-    public static function setInputStrategy($strategyName){
 
-        if(is_object(self::$inputStrategy)){//если уже есть стратегия, то удаляем объекты
-            self::$inputStrategy->free(self::$containers);
-        }
-
-        $className=$strategyName."LogerStrategy";
-
-        //Debug::dump($className);
-
-        self::$inputStrategy=new $className();
-    }
 
     public static function setOutputStrategy($strategyName){
         $className=$strategyName."LogerStrategy";
@@ -36,83 +43,118 @@ class Loger{
     }
 
     public static function addContainer($containerName){
-
         if(self::$containers[$containerName]==NULL){//если такого имени не существует
-            self::$containers[$containerName]=self::$inputStrategy->addContainer($containerName);
+            self::$containers[$containerName]=array();
         }
+    }
+
+    public static function getCurrent(){
+        return self::$currentContainerName;
+    }
+
+    public static function setCurrent($name){
+        if(self::$containers[$name]==NULL){
+            self::$containers[$name]=array();
+        }
+        self::$currentContainerName=$name;
+    }
+
+    public static function setCurrentSafe($name){//выбирает текущий контейнер, но сохраняет предыдущий
+        if(!empty(self::$currentContainerName)){
+            self::$prevContainerName=self::$currentContainerName;
+        }
+        self::setCurrent($name);
 
     }
 
-    //public static function
-
-    public static function write($container_name, $data){
-        self::$inputStrategy->write(self::$containers, $container_name, $data);
+    public static function setPrevious(){
+        self::$currentContainerName=self::$prevContainerName;
+        self::$prevContainerName='';
     }
+
+
+
+    public static function setLevel($level){
+        self::$logLevel=$level;
+    }
+
+    public static function write($container_name, $data, $level=GLOGER_DEBUG){
+        if(self::$logLevel<=$level){
+            self::$containers[$container_name][udate('d.m.Y H:i:s.u')]=new LogerMessage($data, $level);
+        }
+    }
+
+
 
     public static function get($container_name){
-        $dataLog=self::$inputStrategy->get(self::$containers, $container_name);
+        $dataLog=self::$containers[$container_name];
         return self::$outputStrategy->get($dataLog);
-
     }
+
+    public static function debug($data, $container_name=""){
+        if(empty($container_name)){
+            $container_name=self::$currentContainerName;
+        }
+        self::write($container_name, $data, GLOGER_DEBUG);
+    }
+
+    public static function info($data, $container_name=""){
+        if(empty($container_name)){
+            $container_name=self::$currentContainerName;
+        }
+        self::write($container_name, $data, GLOGER_INFO);
+    }
+
+
+
+    public static function warning($data, $container_name=""){
+        if(empty($container_name)){
+            $container_name=self::$currentContainerName;
+        }
+        self::write($container_name, $data, GLOGER_WARNING);
+    }
+
+    public static function error($data, $container_name=""){
+        if(empty($container_name)){
+            $container_name=self::$currentContainerName;
+        }
+        self::write($container_name, $data, GLOGER_ERROR);
+    }
+
+    public static function fatal($data, $container_name=""){
+        if(empty($container_name)){
+            $container_name=self::$currentContainerName;
+        }
+        self::write($container_name, $data, GLOGER_FATAL);
+    }
+
+
 
 
 }
 
 class LogerMessage{
-    private $time;
+
     private $message;
     private $level;
 
-    public function __construct($time, $message, $level){
-        $this->time=$time;
+    public function __construct($message, $level){
         $this->message=$message;
         $this->level=$level;
     }
+
+    public function  getMessage(){
+        return $this->message;
+    }
+
+    public function  getLevel(){
+        return $this->level;
+    }
+
+
+
 }
 
-abstract class InputLogerStrategy{
-    abstract public function addContainer($containerName);
-    abstract public function write(&$container, $container_name, $data);
-    abstract public function get($container, $container_name);
-    abstract public function free($container);
-}
-
-
-class ArrayLogerStrategy extends InputLogerStrategy{
-    public function addContainer($containerName){
-        return array();
-    }
-    public function write(&$container, $container_name, $data){
-
-        $dt=new DateTime();
-
-        $container[$container_name][udate('d.m.Y H:i:s.u')]=$data;
-    }
-    public function get($container, $container_name){
-        return $container[$container_name];
-
-    }
-
-    public function free($container){
-
-    }
-}
-
-class FileLogerStrategy extends InputLogerStrategy{
-    public function addContainer($containerName){
-
-    }
-    public function write(&$container, $container_name, $data){
-
-    }
-    public function get($container, $container_name){
-
-    }
-
-    public function free($container){
-
-    }
-}
 
 
 
@@ -124,7 +166,7 @@ class HtmlLogerStrategy extends OutputLogerStrategy{
     public function get($dataLog){
 
         $colors=array(
-            '#6487dc', '#4682B4'
+            '#483D8B','#2E8B57', '#DAA520', '#FF7F50', '#FF0000'
         );
 
 
@@ -132,11 +174,16 @@ class HtmlLogerStrategy extends OutputLogerStrategy{
         $htmlString="<div style='color:#FFFFFF; width:80%; '>";
 
         $counter=0;
-        foreach ($dataLog as $time=>$string) {
+        foreach ($dataLog as $time=>$message) {
 
             $strNumber=($counter%2);
 
-            $htmlString.="<div style='background: $colors[$strNumber]; min-height: 30px'>";
+            $level=$message->getLevel();
+            $string=$message->getMessage();
+
+            $color_number=$level-1;
+
+            $htmlString.="<div style='background: $colors[$color_number]; min-height: 30px'>";
 
             $htmlString.="<div style='width: 20%; padding: 5px; display: inline-block'>$time</div>";
             $htmlString.="<div style='display: inline-block; padding: 5px;'>$string</div>";
