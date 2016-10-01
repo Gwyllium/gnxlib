@@ -120,6 +120,15 @@ class BitrixUtil {
         return SITE_TEMPLATE_PATH.$path='';
     }
 
+    function getPageLevel($page=''){//глубина страницы в url
+        global $APPLICATION;
+        if(!$page){
+            $page=$APPLICATION->GetCurPage();
+        }
+
+        return count(explode('/', $page))-1;
+    }
+
 
 
 

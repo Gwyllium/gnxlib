@@ -4,7 +4,12 @@
 
 spl_autoload_register(function ($class) {
     $filepath = rsearch(__DIR__, $class.".php");
-    require_once($filepath);
+
+    if($filepath){
+        require_once($filepath);
+    }
+
+
 });
 
 

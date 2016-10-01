@@ -60,10 +60,16 @@ class Loger{
     }
 
     public static function setCurrentSafe($name){//выбирает текущий контейнер, но сохраняет предыдущий
-        if(!empty(self::$currentContainerName)){
-            self::$prevContainerName=self::$currentContainerName;
+        if(empty(self::$currentContainerName)){
+            self::$currentContainerName=$name;
+            self::$prevContainerName=$name;
         }
-        self::setCurrent($name);
+        else{
+            self::$prevContainerName=self::$currentContainerName;
+            self::$currentContainerName=$name;
+        }
+
+
 
     }
 
@@ -79,6 +85,7 @@ class Loger{
     }
 
     public static function write($container_name, $data, $level=GLOGER_DEBUG){
+
         if(self::$logLevel<=$level){
             self::$containers[$container_name][udate('d.m.Y H:i:s.u')]=new LogerMessage($data, $level);
         }
@@ -89,6 +96,10 @@ class Loger{
     public static function get($container_name){
         $dataLog=self::$containers[$container_name];
         return self::$outputStrategy->get($dataLog);
+    }
+
+    public static function getAll(){
+        return self::$containers;
     }
 
     public static function debug($data, $container_name=""){
@@ -110,6 +121,7 @@ class Loger{
     public static function warning($data, $container_name=""){
         if(empty($container_name)){
             $container_name=self::$currentContainerName;
+
         }
         self::write($container_name, $data, GLOGER_WARNING);
     }
